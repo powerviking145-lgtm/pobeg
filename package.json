@@ -1,0 +1,22 @@
+{
+  "name": "escape-perekrestok",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Побег в Перекрёсток — офлайн-метроидвания в браузере (портрет, одним пальцем)",
+  "scripts": {
+    "dev": "vite",
+    "gen-assets": "node scripts/generate-assets.mjs",
+    "build": "node scripts/generate-assets.mjs && tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "pngjs": "^7.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}
