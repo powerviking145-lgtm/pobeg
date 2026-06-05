@@ -7,21 +7,26 @@ interface Sample {
   t: number;
 }
 
-// Управление одним пальцем (мобилка):
-//   удержание и ведение влево/вправо — ходьба
-//   быстрый свайп вверх — прыжок
-//   быстрый свайп вниз — рывок
-//   короткий тап — атака / взаимодействие
+interface FingerTrack {
+  id: number;
+  role: "move" | "action";
+  startX: number;
+  startY: number;
+  startTime: number;
+  moveAnchorX: number;
+  movedFar: boolean;
+  samples: Sample[];
+}
+
+// Управление двумя пальцами (мобилка):
+//   палец 1 — удержание и ведение влево/вправо (ходьба, пока палец на экране)
+//   палец 2 — свайп вверх прыжок, вниз рывок, короткий тап удар/действие
+// Один палец тоже работает: ведение + свайп ↑↓ без отпускания.
 export class TouchInput {
   private scene: Phaser.Scene;
 
-  private active = false;
-  private startX = 0;
-  private startY = 0;
-  private startTime = 0;
-  private anchorX = 0;
-  private movedFar = false;
-  private samples: Sample[] = [];
+  private fingers = new Map<number, FingerTrack>();
+  private movePointerId: number | null = null;
 
   private jumpQueued = false;
   private dashQueued = false;
@@ -61,46 +66,64 @@ export class TouchInput {
   }
 
   private onDown(p: Phaser.Input.Pointer): void {
-    this.active = true;
-    this.startX = p.x;
-    this.startY = p.y;
-    this.anchorX = p.x;
-    this.startTime = this.eventTime(p);
-    this.movedFar = false;
-    this.moveDir = 0;
-    this.samples = [{ x: p.x, y: p.y, t: this.startTime }];
+    const id = p.id;
+    if (this.fingers.has(id)) return;
+
+    const role: FingerTrack["role"] =
+      this.movePointerId === null ? "move" : "action";
+
+    const t = this.eventTime(p);
+    const track: FingerTrack = {
+      id,
+      role,
+      startX: p.x,
+      startY: p.y,
+      startTime: t,
+      moveAnchorX: p.x,
+      movedFar: false,
+      samples: [{ x: p.x, y: p.y, t }],
+    };
+    this.fingers.set(id, track);
+
+    if (role === "move") {
+      this.movePointerId = id;
+    }
   }
 
   private onMove(p: Phaser.Input.Pointer): void {
-    if (!this.active) return;
+    const track = this.fingers.get(p.id);
+    if (!track) return;
+
     const t = this.eventTime(p);
-    this.samples.push({ x: p.x, y: p.y, t });
+    track.samples.push({ x: p.x, y: p.y, t });
     const cutoff = t - this.SWIPE_WINDOW * 2;
-    while (this.samples.length > 2 && this.samples[0].t < cutoff) {
-      this.samples.shift();
+    while (track.samples.length > 2 && track.samples[0].t < cutoff) {
+      track.samples.shift();
     }
 
-    const totalDx = p.x - this.startX;
-    const totalDy = p.y - this.startY;
+    const totalDx = p.x - track.startX;
+    const totalDy = p.y - track.startY;
     if (Math.abs(totalDx) > this.TAP_MAX_DIST || Math.abs(totalDy) > this.TAP_MAX_DIST) {
-      this.movedFar = true;
+      track.movedFar = true;
     }
 
-    this.detectSwipe(p, t);
+    this.detectSwipe(track, p, t);
 
-    const dx = p.x - this.anchorX;
-    if (Math.abs(dx) > this.DEADZONE) {
-      this.moveDir = dx > 0 ? 1 : -1;
-    } else {
-      this.moveDir = 0;
+    if (track.role === "move") {
+      const dx = p.x - track.moveAnchorX;
+      if (Math.abs(dx) > this.DEADZONE) {
+        this.moveDir = dx > 0 ? 1 : -1;
+      } else if (this.movePointerId === track.id) {
+        this.moveDir = 0;
+      }
     }
   }
 
-  private detectSwipe(p: Phaser.Input.Pointer, t: number): void {
+  private detectSwipe(track: FingerTrack, p: Phaser.Input.Pointer, t: number): void {
     let ref: Sample | null = null;
-    for (let i = 0; i < this.samples.length; i++) {
-      if (t - this.samples[i].t <= this.SWIPE_WINDOW) {
-        ref = this.samples[i];
+    for (let i = 0; i < track.samples.length; i++) {
+      if (t - track.samples[i].t <= this.SWIPE_WINDOW) {
+        ref = track.samples[i];
         break;
       }
     }
@@ -119,8 +142,10 @@ export class TouchInput {
     ) {
       this.jumpQueued = true;
       this.lastJumpTime = t;
-      this.anchorX = p.x;
-      this.samples = [{ x: p.x, y: p.y, t }];
+      if (track.role === "move") {
+        track.moveAnchorX = p.x;
+      }
+      track.samples = [{ x: p.x, y: p.y, t }];
       return;
     }
 
@@ -132,23 +157,25 @@ export class TouchInput {
     ) {
       this.dashQueued = true;
       this.lastDashTime = t;
-      this.samples = [{ x: p.x, y: p.y, t }];
+      track.samples = [{ x: p.x, y: p.y, t }];
     }
   }
 
   private onUp(p: Phaser.Input.Pointer): void {
-    if (!this.active) return;
-    const t = this.eventTime(p);
-    const dist = Phaser.Math.Distance.Between(this.startX, this.startY, p.x, p.y);
-    const dur = t - this.startTime;
+    const track = this.fingers.get(p.id);
+    if (!track) return;
 
-    if (!this.movedFar && dist < this.TAP_MAX_DIST && dur < this.TAP_MAX_TIME) {
+    const t = this.eventTime(p);
+    const dist = Phaser.Math.Distance.Between(track.startX, track.startY, p.x, p.y);
+    const dur = t - track.startTime;
+
+    if (!track.movedFar && dist < this.TAP_MAX_DIST && dur < this.TAP_MAX_TIME) {
       this.attackQueued = true;
       this.interactQueued = true;
       this.lastTapY = p.y;
     } else {
-      const totalDx = p.x - this.startX;
-      const totalDy = p.y - this.startY;
+      const totalDx = p.x - track.startX;
+      const totalDy = p.y - track.startY;
       if (dur > 0 && Math.abs(totalDy) > Math.abs(totalDx)) {
         const v = totalDy / dur;
         if (
@@ -169,9 +196,11 @@ export class TouchInput {
       }
     }
 
-    this.active = false;
-    this.moveDir = 0;
-    this.samples = [];
+    this.fingers.delete(p.id);
+    if (this.movePointerId === track.id) {
+      this.movePointerId = null;
+      this.moveDir = 0;
+    }
   }
 
   poll(): InputState {
@@ -190,7 +219,7 @@ export class TouchInput {
   }
 
   isActive(): boolean {
-    return this.active;
+    return this.fingers.size > 0;
   }
 
   getLastTapY(): number {

@@ -341,7 +341,7 @@ export class UIScene extends Phaser.Scene {
           ? "A D · Space · F · Shift"
           : mode === "both"
             ? "тач + клавиатура"
-            : "веди · свайп ↑↓ · тап";
+            : "1 палец — бег · 2-й — ↑↓ прыжок/рывок";
       this.controlsHint.setText(hint);
       this.controlsHint.setAlpha(1);
       this.bottomPanel.setAlpha(1);

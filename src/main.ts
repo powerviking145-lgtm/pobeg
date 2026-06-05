@@ -21,7 +21,7 @@ const config: Phaser.Types.Core.GameConfig = {
   },
   input: {
     keyboard: true,
-    activePointers: 2,
+    activePointers: 3,
   },
   physics: {
     default: "arcade",

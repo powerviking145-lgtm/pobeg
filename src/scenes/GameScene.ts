@@ -783,8 +783,8 @@ export class GameScene extends Phaser.Scene {
     this.registry.set("forceTutorial", false);
 
     this.tutorialSteps = [
-      { text: "Идти: веди палец или ← → / A D" },
-      { text: "Прыжок: свайп вверх или Space / W" },
+      { text: "Идти: 1-й палец влево/вправо или ← → / A D" },
+      { text: "Прыжок: 2-й палец свайп ↑ или Space / W" },
       {
         text: "Основной путь проходим сразу. Рост открывает секреты в боковых комнатах!",
       },

@@ -141,7 +141,7 @@ export class MenuScene extends Phaser.Scene {
     this.drawQuestsCompact(748);
 
     this.add
-      .text(GAME_W / 2, 900, "тач: веди · свайп ↑↓  |  ПК: A D · Space · F", {
+      .text(GAME_W / 2, 900, "тач: 1 палец — бег, 2-й — ↑↓  |  ПК: A D · Space · F", {
         fontFamily: HUD_FONT_FAMILY,
         fontSize: HUD_FONT.sm,
         color: HUD_COLORS.secondary,
