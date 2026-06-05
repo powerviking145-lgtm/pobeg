@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { TILE, TEX, COLORS, GRAVITY_Y, GAME_W, ROOM_W, ROOM_H } from "../config";
+import { TILE, TEX, COLORS, GRAVITY_Y, GAME_W, GAME_H, ROOM_W, ROOM_H } from "../config";
 import { PuzzleSystem } from "../systems/PuzzleSystem";
 import { LevelGenerator } from "../systems/LevelGenerator";
 import { InputSystem } from "../systems/InputSystem";
@@ -11,7 +11,7 @@ import { Sfx } from "../systems/Sound";
 import { Music } from "../systems/Music";
 import { Quests } from "../systems/Quests";
 import { VfxSystem } from "../systems/VfxSystem";
-import { makeFloatingLabel, makeButton } from "../systems/ui";
+import { makeFloatingLabel, makeButton, sharpenText } from "../systems/ui";
 import { HUD_FONT, HUD_FONT_FAMILY, HUD_COLORS, HUD_LAYOUT } from "../systems/uiTheme";
 import { getPromosClaimedToday } from "../systems/PromoSystem";
 import type { GeneratedLevel, LevelObject, InputState, QuestType } from "../types";
@@ -426,7 +426,7 @@ export class GameScene extends Phaser.Scene {
     const wPx = this.level.widthTiles * TILE;
     const hPx = this.level.heightTiles * TILE;
     const topHud = HUD_LAYOUT.topPanelH;
-    const bottomHud = HUD_LAYOUT.bottomPanelH;
+    const bottomHud = HUD_LAYOUT.bottomPanelH + HUD_LAYOUT.questPanelH;
 
     // Доп. прокрутка у краёв карты — ГГ остаётся между HUD-панелями, а не под ними.
     this.cameras.main.setBounds(0, -topHud, wPx, hPx + bottomHud);
@@ -441,6 +441,11 @@ export class GameScene extends Phaser.Scene {
 
     // Игнорируем тап по верхней HUD-полосе (кнопки ☰/сердца), чтобы он не бил.
     if ((input.attackPressed || input.interactPressed) && this.controls.getLastTapY() < 120) {
+      input.attackPressed = false;
+      input.interactPressed = false;
+    }
+    const questStripTop = GAME_H - HUD_LAYOUT.questPanelH - HUD_LAYOUT.bottomPanelH;
+    if ((input.attackPressed || input.interactPressed) && this.controls.getLastTapY() > questStripTop) {
       input.attackPressed = false;
       input.interactPressed = false;
     }
@@ -795,20 +800,22 @@ export class GameScene extends Phaser.Scene {
     this.tutorialIdx = 0;
 
     this.tutorialBg = this.add.graphics().setScrollFactor(0).setDepth(40);
-    this.tutorialText = this.add
-      .text(GAME_W / 2, 340, "", {
-        fontFamily: HUD_FONT_FAMILY,
-        fontSize: HUD_FONT.lg,
-        color: HUD_COLORS.primary,
-        fontStyle: "bold",
-        align: "center",
-        wordWrap: { width: GAME_W - 80 },
-        stroke: HUD_COLORS.panel,
-        strokeThickness: 3,
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(41);
+    this.tutorialText = sharpenText(
+      this.add
+        .text(GAME_W / 2, 340, "", {
+          fontFamily: HUD_FONT_FAMILY,
+          fontSize: HUD_FONT.md,
+          color: HUD_COLORS.primary,
+          fontStyle: "bold",
+          align: "center",
+          wordWrap: { width: GAME_W - 48 },
+          stroke: HUD_COLORS.panel,
+          strokeThickness: 6,
+        })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(41)
+    );
     this.tutorialBtn = makeButton(this, GAME_W / 2, 430, "ДАЛЕЕ", () =>
       this.advanceTutorial()
     ).setScrollFactor(0).setDepth(42);

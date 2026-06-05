@@ -1,25 +1,62 @@
 import Phaser from "phaser";
 import { GAME_W, GAME_H, TEX } from "../config";
 import { setMuted, isMuted } from "./Music";
-import { HUD_COLORS, HUD_FONT, HUD_FONT_FAMILY } from "./uiTheme";
+import {
+  HUD_BUTTON,
+  HUD_COLORS,
+  HUD_FONT,
+  HUD_FONT_FAMILY,
+  HUD_TEXT_STROKE,
+} from "./uiTheme";
 
-// Кнопка вкл/выкл звука (музыка + эффекты).
+/** Чёткий текст на Retina-экранах. */
+export function sharpenText(text: Phaser.GameObjects.Text): Phaser.GameObjects.Text {
+  const dpr =
+    typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+  text.setResolution(dpr);
+  return text;
+}
+
+/** Текст с обводкой — читается на любом фоне. */
+export function makeReadableText(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  content: string,
+  style: Phaser.Types.GameObjects.Text.TextStyle = {}
+): Phaser.GameObjects.Text {
+  const t = scene.add.text(x, y, content, {
+    fontFamily: HUD_FONT_FAMILY,
+    fontSize: HUD_FONT.md,
+    color: HUD_COLORS.primary,
+    fontStyle: "bold",
+    stroke: HUD_TEXT_STROKE.color,
+    strokeThickness: HUD_TEXT_STROKE.thickness,
+    ...style,
+  });
+  return sharpenText(t);
+}
+
 export function makeMuteButton(
   scene: Phaser.Scene,
   x: number,
   y: number
 ): Phaser.GameObjects.Text {
   const label = () => (isMuted() ? "🔇" : "🔊");
-  const t = scene.add
-    .text(x, y, label(), {
-      fontFamily: "system-ui, sans-serif",
-      fontSize: "26px",
-      color: "#ffffff",
-    })
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(50)
-    .setInteractive({ useHandCursor: true });
+  const t = sharpenText(
+    scene.add
+      .text(x, y, label(), {
+        fontFamily: HUD_FONT_FAMILY,
+        fontSize: HUD_FONT.lg,
+        color: HUD_COLORS.primary,
+        stroke: HUD_TEXT_STROKE.color,
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(50)
+      .setInteractive({ useHandCursor: true })
+  );
   t.on(Phaser.Input.Events.POINTER_DOWN, () => {
     setMuted(!isMuted());
     t.setText(label());
@@ -35,7 +72,6 @@ export interface ButtonOptions {
   fontSize?: number;
 }
 
-// Простая кнопка: скруглённый прямоугольник + текст, с реакцией на нажатие.
 export function makeButton(
   scene: Phaser.Scene,
   x: number,
@@ -44,31 +80,34 @@ export function makeButton(
   onClick: () => void,
   opts: ButtonOptions = {}
 ): Phaser.GameObjects.Container {
-  const w = opts.width ?? 320;
-  const h = opts.height ?? 72;
+  const w = opts.width ?? HUD_BUTTON.width;
+  const h = opts.height ?? HUD_BUTTON.height;
   const fill = opts.fill ?? 0x3ad17a;
   const textColor = opts.textColor ?? "#0e1726";
-  const fontSize = opts.fontSize ?? 28;
+  const fontSize = opts.fontSize ?? HUD_BUTTON.fontSize;
 
   const g = scene.add.graphics();
   g.fillStyle(fill, 1);
-  g.fillRoundedRect(-w / 2, -h / 2, w, h, 16);
-  g.lineStyle(3, 0x000000, 0.18);
-  g.strokeRoundedRect(-w / 2, -h / 2, w, h, 16);
+  g.fillRoundedRect(-w / 2, -h / 2, w, h, 18);
+  g.lineStyle(4, 0x000000, 0.2);
+  g.strokeRoundedRect(-w / 2, -h / 2, w, h, 18);
 
-  const text = scene.add
-    .text(0, 0, label, {
-      fontFamily: "system-ui, sans-serif",
-      fontSize: `${fontSize}px`,
-      color: textColor,
-      fontStyle: "bold",
-    })
-    .setOrigin(0.5);
+  const text = sharpenText(
+    scene.add
+      .text(0, 0, label, {
+        fontFamily: HUD_FONT_FAMILY,
+        fontSize: `${fontSize}px`,
+        color: textColor,
+        fontStyle: "bold",
+        stroke: HUD_TEXT_STROKE.color,
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+  );
 
   const container = scene.add.container(x, y, [g, text]);
   container.setSize(w, h);
-  // Небольшой запас хит-зоны для удобства попадания пальцем.
-  const pad = 8;
+  const pad = 10;
   container.setInteractive({
     hitArea: new Phaser.Geom.Rectangle(
       -w / 2 - pad,
@@ -80,7 +119,6 @@ export function makeButton(
     useHandCursor: true,
   });
 
-  // Срабатываем только если нажатие НАЧАЛОСЬ на кнопке (надёжно на таче).
   let pressed = false;
   container.on(Phaser.Input.Events.POINTER_DOWN, () => {
     pressed = true;
@@ -105,8 +143,6 @@ export function makeButton(
   return container;
 }
 
-// Фон сцены: нарисованная картинка города с затемнением для читаемости,
-// либо градиент как запасной вариант.
 export function drawSceneBackground(
   scene: Phaser.Scene,
   top: number,
@@ -128,7 +164,6 @@ export function drawSceneBackground(
   }
 }
 
-// Вертикальный градиентный фон.
 export function drawBackground(scene: Phaser.Scene, top: number, bottom: number): void {
   const { width, height } = scene.scale;
   const g = scene.add.graphics();
@@ -147,7 +182,6 @@ export function drawBackground(scene: Phaser.Scene, top: number, bottom: number)
   g.setScrollFactor(0);
 }
 
-/** Всплывающая подпись с обводкой — читаема на любом фоне. */
 export function makeFloatingLabel(
   scene: Phaser.Scene,
   x: number,
@@ -155,15 +189,17 @@ export function makeFloatingLabel(
   msg: string,
   color: string = HUD_COLORS.success
 ): Phaser.GameObjects.Text {
-  return scene.add
-    .text(x, y, msg, {
-      fontFamily: HUD_FONT_FAMILY,
-      fontSize: HUD_FONT.lg,
-      color,
-      fontStyle: "bold",
-      stroke: HUD_COLORS.panel,
-      strokeThickness: 4,
-    })
-    .setOrigin(0.5)
-    .setDepth(60);
+  return sharpenText(
+    scene.add
+      .text(x, y, msg, {
+        fontFamily: HUD_FONT_FAMILY,
+        fontSize: HUD_FONT.lg,
+        color,
+        fontStyle: "bold",
+        stroke: HUD_TEXT_STROKE.color,
+        strokeThickness: HUD_TEXT_STROKE.thickness,
+      })
+      .setOrigin(0.5)
+      .setDepth(60)
+  );
 }

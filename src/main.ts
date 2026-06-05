@@ -18,6 +18,9 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: GAME_W,
+    height: GAME_H,
+    expandParent: true,
   },
   input: {
     keyboard: true,
@@ -34,5 +37,11 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
-// Доступ к игре из консоли (отладка).
 (window as unknown as { game: Phaser.Game }).game = game;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("resize", () => game.scale.refresh());
+  window.addEventListener("orientationchange", () => {
+    window.setTimeout(() => game.scale.refresh(), 150);
+  });
+}

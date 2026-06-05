@@ -1,13 +1,22 @@
 import Phaser from "phaser";
 import { GAME_W, COLORS, TEX, playerTexForStage, playerStageFrameBase } from "../config";
 import { hasPlayerSheet, playerAnimKey } from "../systems/AnimationSystem";
-import { makeButton, drawSceneBackground, makeMuteButton } from "../systems/ui";
-import { HUD_COLORS, HUD_FONT, HUD_FONT_FAMILY, MAX_PROMOS_PER_DAY } from "../systems/uiTheme";
+import {
+  makeButton,
+  drawSceneBackground,
+  makeMuteButton,
+  makeReadableText,
+} from "../systems/ui";
+import {
+  HUD_BUTTON,
+  HUD_COLORS,
+  HUD_FONT,
+  MAX_PROMOS_PER_DAY,
+} from "../systems/uiTheme";
 import { Music } from "../systems/Music";
 import { GrowthSystem } from "../systems/GrowthSystem";
 import { saveSystem } from "../systems/SaveSystem";
 import { canClaimRunPromo, getPromosClaimedToday } from "../systems/PromoSystem";
-import { Quests } from "../systems/Quests";
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -15,56 +24,43 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    drawSceneBackground(this, COLORS.skyTop, COLORS.sky, 0.2);
-    if (this.textures.exists(TEX.shelf_wall)) {
-      this.add
-        .image(GAME_W / 2, 500, TEX.shelf_wall)
-        .setScale(2.2)
-        .setAlpha(0.35)
-        .setDepth(-1);
-    }
+    drawSceneBackground(this, COLORS.skyTop, COLORS.sky, 0.62);
     Music.play("menu");
     this.cameras.main.fadeIn(250, 0, 0, 0);
-    makeMuteButton(this, 30, 44);
+    makeMuteButton(this, 40, 52);
 
-    this.add
-      .text(GAME_W / 2, 110, "ПОБЕГ В", {
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "44px",
-        color: "#ffffff",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-    this.add
-      .text(GAME_W / 2, 162, "ПЕРЕКРЁСТОК", {
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "48px",
-        color: "#3ad17a",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-    this.add
-      .text(GAME_W / 2, 210, "мобилка: жесты · ПК: клавиатура", {
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "18px",
-        color: "#c8d2e0",
-      })
-      .setOrigin(0.5);
+    const panel = this.add.graphics().setDepth(1);
+    panel.fillStyle(0x0e1726, 0.9);
+    panel.fillRoundedRect(16, 48, GAME_W - 32, 200, 18);
 
-    // Превью персонажа с текущей стадией роста (тамаготчи).
+    makeReadableText(this, GAME_W / 2, 98, "ПОБЕГ В", {
+      fontSize: HUD_FONT.title,
+    }).setOrigin(0.5);
+
+    makeReadableText(this, GAME_W / 2, 162, "ПЕРЕКРЁСТОК", {
+      fontSize: HUD_FONT.xl,
+      color: HUD_COLORS.success,
+    }).setOrigin(0.5);
+
+    makeReadableText(this, GAME_W / 2, 218, "мобилка · жесты", {
+      fontSize: HUD_FONT.sm,
+      color: HUD_COLORS.secondary,
+    }).setOrigin(0.5);
+
     const stage = GrowthSystem.currentStage();
     const sheet = hasPlayerSheet(this);
     const tex = sheet ? TEX.player_sheet : playerTexForStage(stage.id);
     const preview = this.add
-      .sprite(GAME_W / 2, 380, tex, sheet ? playerStageFrameBase(stage.id) : 0)
+      .sprite(GAME_W / 2, 370, tex, sheet ? playerStageFrameBase(stage.id) : 0)
       .setOrigin(0.5, 1)
-      .setScale(1.35);
+      .setScale(1.4)
+      .setDepth(2);
     const runKey = playerAnimKey(stage.id, "run");
     if (this.anims.exists(runKey)) preview.play(runKey);
     else {
       this.tweens.add({
         targets: preview,
-        y: 364,
+        y: 354,
         duration: 900,
         yoyo: true,
         repeat: -1,
@@ -72,26 +68,14 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    this.add
-      .text(GAME_W / 2, 430, `Стадия: ${stage.name}`, {
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "22px",
-        color: "#ffd23f",
-        fontStyle: "bold",
-      })
-      .setOrigin(0.5);
-    this.add
-      .text(GAME_W / 2, 458, GrowthSystem.statLine(stage), {
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "14px",
-        color: "#9aa6b6",
-      })
-      .setOrigin(0.5);
+    makeReadableText(this, GAME_W / 2, 400, stage.name, {
+      fontSize: HUD_FONT.md,
+      color: HUD_COLORS.accent,
+    }).setOrigin(0.5);
 
-    this.drawGrowthBar(GAME_W / 2, 478);
+    this.drawGrowthBar(GAME_W / 2, 438);
 
-    // Кнопки.
-    makeButton(this, GAME_W / 2, 580, "ИГРАТЬ", () => {
+    makeButton(this, GAME_W / 2, 540, "ИГРАТЬ", () => {
       this.scene.start("Game");
     });
 
@@ -99,93 +83,65 @@ export class MenuScene extends Phaser.Scene {
     makeButton(
       this,
       GAME_W / 2,
-      668,
-      `МОИ ПРОМОКОДЫ (${promoCount})`,
+      644,
+      promoCount > 0 ? `ПРОМОКОДЫ (${promoCount})` : "ПРОМОКОДЫ",
       () => this.scene.start("Promo", { from: "Menu" }),
-      { fill: 0xffd23f }
+      { fill: 0xffd23f, height: 76, fontSize: 34 }
     );
 
-    // Маленькая кнопка повтора обучения.
     makeButton(
       this,
-      GAME_W - 44,
-      44,
+      GAME_W - 52,
+      52,
       "?",
       () => {
         this.registry.set("forceTutorial", true);
         this.scene.start("Game");
       },
-      { width: 52, height: 52, fontSize: 26, fill: 0x16223c, textColor: "#ffffff" }
+      { width: 56, height: 56, fontSize: HUD_BUTTON.smallFontSize, fill: 0x16223c, textColor: "#ffffff" }
     );
 
-    // Подсказка о ежедневной награде.
     const claimable = canClaimRunPromo();
     const promosToday = getPromosClaimedToday();
-    this.add
-      .text(
-        GAME_W / 2,
-        726,
-        claimable
-          ? `Промо сегодня: ${promosToday}/${MAX_PROMOS_PER_DAY} — пройди уровень!`
-          : `Все ${MAX_PROMOS_PER_DAY} промо на сегодня получены. Завтра снова!`,
-        {
-          fontFamily: "system-ui, sans-serif",
-          fontSize: "15px",
-          color: claimable ? "#7ed957" : "#9aa6b6",
-          align: "center",
-          wordWrap: { width: GAME_W - 80 },
-        }
-      )
-      .setOrigin(0.5);
+    const footer = this.add.graphics().setDepth(1);
+    footer.fillStyle(0x0e1726, 0.94);
+    footer.fillRect(0, 820, GAME_W, 140);
 
-    this.drawQuestsCompact(748);
-
-    this.add
-      .text(GAME_W / 2, 900, "тач: 1 палец — бег, 2-й — ↑↓  |  ПК: A D · Space · F", {
-        fontFamily: HUD_FONT_FAMILY,
+    makeReadableText(
+      this,
+      GAME_W / 2,
+      848,
+      claimable
+        ? `Промо: ${promosToday}/${MAX_PROMOS_PER_DAY} сегодня`
+        : "Промо на сегодня получены",
+      {
         fontSize: HUD_FONT.sm,
-        color: HUD_COLORS.secondary,
-        align: "center",
-      })
-      .setOrigin(0.5, 1);
-  }
+        color: claimable ? HUD_COLORS.success : HUD_COLORS.muted,
+      }
+    ).setOrigin(0.5, 0);
 
-  private drawQuestsCompact(top: number): void {
-    const quests = Quests.ensureToday();
-    const lines = quests.items
-      .slice(0, 2)
-      .map((q) => {
-        const mark = q.claimed ? "✓" : `${q.progress}/${q.target}`;
-        return `${q.title} ${mark}`;
-      })
-      .join("  ·  ");
-    this.add
-      .text(GAME_W / 2, top, `Задания: ${lines}`, {
-        fontFamily: HUD_FONT_FAMILY,
-        fontSize: HUD_FONT.sm,
-        color: HUD_COLORS.accent,
-        align: "center",
-        wordWrap: { width: GAME_W - 48 },
-      })
-      .setOrigin(0.5);
+    makeReadableText(this, GAME_W / 2, 910, "1 палец — бег\n2-й палец — ↑ прыжок", {
+      fontSize: HUD_FONT.sm,
+      color: HUD_COLORS.secondary,
+      align: "center",
+      lineSpacing: 8,
+    }).setOrigin(0.5, 0);
   }
 
   private drawGrowthBar(cx: number, cy: number): void {
-    const w = 280;
-    const h = 16;
+    const w = 320;
+    const h = 18;
     const { ratio, next } = GrowthSystem.progressToNext();
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.3);
-    g.fillRoundedRect(cx - w / 2, cy, w, h, 8);
+    const g = this.add.graphics().setDepth(2);
+    g.fillStyle(0x000000, 0.5);
+    g.fillRoundedRect(cx - w / 2, cy, w, h, 9);
     g.fillStyle(0x7ed957, 1);
-    g.fillRoundedRect(cx - w / 2, cy, Math.max(8, w * ratio), h, 8);
-    const label = next ? `до стадии «${next.name}»` : "максимальная стадия";
-    this.add
-      .text(cx, cy + h + 14, label, {
-        fontFamily: "system-ui, sans-serif",
-        fontSize: "13px",
-        color: "#9aa6b6",
-      })
-      .setOrigin(0.5);
+    g.fillRoundedRect(cx - w / 2, cy, Math.max(12, w * ratio), h, 9);
+    if (next) {
+      makeReadableText(this, cx, cy + h + 12, `→ ${next.name}`, {
+        fontSize: HUD_FONT.xs,
+        color: HUD_COLORS.muted,
+      }).setOrigin(0.5, 0);
+    }
   }
 }
