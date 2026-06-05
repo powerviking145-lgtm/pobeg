@@ -8,6 +8,7 @@
     "dev": "vite",
     "gen-assets": "node scripts/generate-assets.mjs",
     "build": "node scripts/generate-assets.mjs && tsc --noEmit && vite build",
+    "pages:docs": "npm run build && node --input-type=module -e \"import fs from 'node:fs'; fs.cpSync('dist/index.html','docs/index.html')\"",
     "preview": "vite preview"
   },
   "dependencies": {
